@@ -12,15 +12,8 @@ backend=default_backend()
 def generateKey():       #Generate serialized public and private key
     private_key = rsa.generate_private_key(public_exponent=65537, key_size=2048, backend=backend)
     public_key = private_key.public_key()
-    pemprivate = private_key.private_bytes(
-    encoding=serialization.Encoding.PEM,
-    format=serialization.PrivateFormat.PKCS8,
-    encryption_algorithm=serialization.NoEncryption()
-    )
-    pempublic = public_key.public_bytes(
-    encoding=serialization.Encoding.PEM,
-    format=serialization.PublicFormat.SubjectPublicKeyInfo
-    )
+    pemprivate = private_key.private_bytes(encoding=serialization.Encoding.PEM,format=serialization.PrivateFormat.PKCS8,encryption_algorithm=serialization.NoEncryption())
+    pempublic = public_key.public_bytes(encoding=serialization.Encoding.PEM,format=serialization.PublicFormat.SubjectPublicKeyInfo)
     return pemprivate,pempublic
    # print("Alice")
    # print(pemprivate)
@@ -30,45 +23,13 @@ def generateKey():       #Generate serialized public and private key
 
 def aliceSendKey(bobKU,aliceKR,key,iv):      #Generate digital signature,key ciphertext,iv ciphertext
     BOBpublic_key_serealized=bobKU
-    BOBpublic_key = serialization.load_pem_public_key(
-    BOBpublic_key_serealized,
-    backend=default_backend()
-    )
-
-
-    keyciphertext = BOBpublic_key.encrypt(
-    key,
-    padding.OAEP(
-    mgf=padding.MGF1(algorithm=hashes.SHA256()),
-    algorithm=hashes.SHA256(),
-    label=None)
-    )
-
-    ivciphertext= BOBpublic_key.encrypt(
-    iv,
-    padding.OAEP(
-    mgf=padding.MGF1(algorithm=hashes.SHA256()),
-    algorithm=hashes.SHA256(),
-    label=None)
-    )
-
+    BOBpublic_key = serialization.load_pem_public_key(BOBpublic_key_serealized,backend=default_backend())
+    keyciphertext = BOBpublic_key.encrypt(key,padding.OAEP(mgf=padding.MGF1(algorithm=hashes.SHA256()),algorithm=hashes.SHA256(),label=None))
+    ivciphertext= BOBpublic_key.encrypt(iv,padding.OAEP(mgf=padding.MGF1(algorithm=hashes.SHA256()),algorithm=hashes.SHA256(),label=None))
     ALICEprivatekeyserealise=aliceKR
-    ALICEprivate_key = serialization.load_pem_private_key(
-    ALICEprivatekeyserealise,
-    password=None,
-    backend=default_backend()
-    )
-
-
+    ALICEprivate_key = serialization.load_pem_private_key(ALICEprivatekeyserealise,password=None,backend=default_backend())
     message = b"A message I want to sign"
-    signature = ALICEprivate_key.sign(
-    message,
-    padding.PSS(
-    mgf=padding.MGF1(hashes.SHA256()),
-    salt_length=padding.PSS.MAX_LENGTH
-    ),
-    hashes.SHA256()
-    )
+    signature = ALICEprivate_key.sign(message,padding.PSS(mgf=padding.MGF1(hashes.SHA256()),salt_length=padding.PSS.MAX_LENGTH),hashes.SHA256())
     return keyciphertext,ivciphertext,signature
     #print(keyciphertext)
     #print(ivciphertext)
@@ -76,49 +37,15 @@ def aliceSendKey(bobKU,aliceKR,key,iv):      #Generate digital signature,key cip
 
 def bobReceiveKey(bobKR,aliceKU,keyciphertext,ivciphertext,signature): #receive key and verify the sender
     BOBprivate_key_serealized=bobKR
-    BOBprivate_key = serialization.load_pem_private_key(
-    BOBprivate_key_serealized,
-    password=None,
-    backend=default_backend()
-    )
-    key = BOBprivate_key.decrypt(
-    keyciphertext,
-    padding.OAEP(
-    mgf=padding.MGF1(algorithm=hashes.SHA256()),
-    algorithm=hashes.SHA256(),
-    label=None
-    )
-    )
-
-
-    iv = BOBprivate_key.decrypt(
-    ivciphertext,
-    padding.OAEP(
-    mgf=padding.MGF1(algorithm=hashes.SHA256()),
-    algorithm=hashes.SHA256(),
-    label=None
-    )
-    )
-
-
+    BOBprivate_key = serialization.load_pem_private_key(BOBprivate_key_serealized,password=None,backend=default_backend())
+    key = BOBprivate_key.decrypt(keyciphertext,padding.OAEP(mgf=padding.MGF1(algorithm=hashes.SHA256()),algorithm=hashes.SHA256(),label=None))
+    iv = BOBprivate_key.decrypt(ivciphertext,padding.OAEP(mgf=padding.MGF1(algorithm=hashes.SHA256()),algorithm=hashes.SHA256(),label=None))
     ALICEpublic_key_serealized=aliceKU
-
-    ALICEpublic_key = serialization.load_pem_public_key(
-    ALICEpublic_key_serealized,
-    backend=default_backend()
-    )
+    ALICEpublic_key = serialization.load_pem_public_key(ALICEpublic_key_serealized,backend=default_backend())
     print(key)
     print(iv)
     checkmessage=b"A message I want to sign"
-    ALICEpublic_key.verify(
-    signature,
-    checkmessage,
-    padding.PSS(
-    mgf=padding.MGF1(hashes.SHA256()),
-    salt_length=padding.PSS.MAX_LENGTH
-    ),
-    hashes.SHA256()
-    )
+    ALICEpublic_key.verify(signature,checkmessage,padding.PSS(mgf=padding.MGF1(hashes.SHA256()),salt_length=padding.PSS.MAX_LENGTH),hashes.SHA256())
     return key,iv
 
 def encryption(key,message,iv):    #encryption function
